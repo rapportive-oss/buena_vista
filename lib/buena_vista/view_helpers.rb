@@ -113,7 +113,7 @@ module BuenaVista
     def display_truncated_text(text, options)
       truncate_options = {:length => options.delete(:length)}
       block_tag = options.delete(:block_tag) || 'p'
-      more = options.delete(:more) || " (\xE2\x80\xA6)" # Unicode ellipsis character in parentheses
+      more = options.delete(:more) || " \xE2\x80\xA6" # Ellipsis character in UTF-8
       any_hidden = false
 
       truncate_text(text, truncate_options) do |visible, hidden|
