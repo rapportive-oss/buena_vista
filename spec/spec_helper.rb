@@ -10,3 +10,5 @@ require 'spec/autorun'
 
 # Load this plugin
 require File.join(File.dirname(__FILE__), '..', 'init')
+
+#$DEBUG = true

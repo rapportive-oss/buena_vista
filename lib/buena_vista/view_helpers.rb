@@ -92,6 +92,13 @@ module BuenaVista
             type1[:cost] <=> type2[:cost]
           end
 
+          if $DEBUG
+            puts "Splitting choices:"
+            split_choices.each do |choice|
+              puts "    \033[0;31mCost #{choice[:cost]}\033[0m for #{choice[:description]} split: \033[0;36m#{choice[:before]}\033[0m|\033[0;34m#{choice[:after]}\033[0m"
+            end
+          end
+
           target_length = 0 # After we've done one split, never split any subsequent text block
           best_split = split_choices.first
           yield best_split[:before], best_split[:after]
