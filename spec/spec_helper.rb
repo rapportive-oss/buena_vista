@@ -1,4 +1,9 @@
 require 'rubygems'
+
+gem 'activesupport'
+gem 'hpricot'
+gem 'rspec'
+
 require 'active_support'
 require 'hpricot'
 require 'spec/autorun'
