@@ -8,7 +8,7 @@ task :default => :spec
 desc "Run all specs for the buena_vista plugin."
 Spec::Rake::SpecTask.new(:spec) do |t|
   #t.spec_opts = ['--options', "\"#{RAILS_ROOT}/spec/spec.opts\""]
-  t.spec_opts = %w(--colour --format specdoc)
+  t.spec_opts = %w(--colour --format nested)
   t.spec_files = FileList['spec/**/*_spec.rb']
 end
 
