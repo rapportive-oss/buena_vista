@@ -33,7 +33,7 @@ describe BuenaVista::ViewHelpers do
       end
 
       describe "if the string is long" do
-        it "should split at a sentence boundary, if possible" do
+        it "should split at a sentence boundary, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products. Turn customers into champions.",
             :length => 70
@@ -43,7 +43,7 @@ describe BuenaVista::ViewHelpers do
           ]]
         end
 
-        it "should split before hyphens, if possible" do
+        it "should split before hyphens, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products. Turn customers into champions.",
             :length => 34
@@ -53,7 +53,7 @@ describe BuenaVista::ViewHelpers do
           ]]
         end
 
-        it "should split before pipe characters, if possible" do
+        it "should split before pipe characters, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 | Harness the ideas of your customers | Build great products | Turn customers into champions",
             :length => 34
@@ -98,7 +98,7 @@ describe BuenaVista::ViewHelpers do
         result.should == ['Uservoice', 'Get Start', 'Join comp']
       end
 
-      it "should split between blocks, if possible" do
+      it "should split between blocks, if appropriate" do
         truncation_pairs(@example, :length => 158).should == [
           ["Uservoice communities are the easiest way to turn customer feedback into action:", ""],
           ["Get Started Free accounts and trials. Sign up in 60 seconds.", ""],
@@ -106,7 +106,7 @@ describe BuenaVista::ViewHelpers do
         ]
       end
 
-      it "should split at a sentence boundary within a block, if possible" do
+      it "should split at a sentence boundary within a block, if appropriate" do
         truncation_pairs(@example, :length => 130).should == [
           ["Uservoice communities are the easiest way to turn customer feedback into action:", ""],
           ["Get Started Free accounts and trials. ", "Sign up in 60 seconds."],
