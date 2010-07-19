@@ -23,9 +23,14 @@ module BuenaVista
       #
       # In this case, the sentence boundary split carries the lowest cost.
 
-      common_separators = %w(/ \\ ~ | . < > : ; - = # _) + ["\xC2\xA6", "\xC2\xAB", "\xC2\xB7", "\xC2\xBB",
-        "\xE2\x80\x90", "\xE2\x80\x91", "\xE2\x80\x92", "\xE2\x80\x93", "\xE2\x80\x94", "\xE2\x80\x95",
-        "\xE2\x80\x96", "\xE2\x80\xA2", "\xE2\x80\x94", "\xE2\x80\xB9", "\xE2\x80\xBA"]
+      # "Conjunctive" characters like ampersand and plus are not included in this list, because we would
+      # rather keep expressions like "a & b" together, if we can.
+      common_separators = %w(/ \\ ~ | . < > : ; - = # _) + [
+        "\xC2\xA6",     "\xC2\xAB",     "\xC2\xB7",     "\xC2\xBB",     # broken bar, &laquo;, middle dot, &raquo;
+        "\xE2\x80\x90", "\xE2\x80\x91", "\xE2\x80\x92", "\xE2\x80\x93", # hyphen, non-breaking hyphen, figure dash, en dash
+        "\xE2\x80\x94", "\xE2\x80\x95", "\xE2\x80\x96", "\xE2\x80\xA2", # em dash, horizontal bar, double bar, bullet
+        "\xE2\x80\xA3", "\xE2\x80\xB9", "\xE2\x80\xBA"                  # triangular bullet, &lsaquo;, &rsaquo;
+      ]
 
       common_separator_regex = /\s+(#{common_separators.map{|char| Regexp.escape(char) }.join('|')})+\s/
 
