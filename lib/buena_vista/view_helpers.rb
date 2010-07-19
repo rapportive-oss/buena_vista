@@ -86,47 +86,15 @@ module BuenaVista
 
         else
           # Try each type of split, and calculate the cost; then pick the type with the lowest cost.
-          split = SPLIT_TYPES.map do |regex, split_type|
-            # pos1 is a split position before the target position. Get the two strings into which
-            # we would split if we split at pos1.
-            before_pos1, after_pos1, pos1_separator, strictly_after_pos1 =
-              if split_type[:split] == :before
-                split_before_match(block, regex, target_length)
-              elsif split_type[:split] == :after
-                split_after_match(block, regex, target_length)
-              end
-
-            # pos2 is the first split position *after* the target position.
-            # Get the two strings into which we would split if we split at pos2.
-            before_pos2, after_pos2 =
-              if !(pos2_match = strictly_after_pos1.match(regex))
-                [block, '']
-              elsif split_type[:split] == :before
-                [before_pos1 + pos1_separator + pos2_match.pre_match, pos2_match.to_s + pos2_match.post_match]
-              elsif split_type[:split] == :after
-                [before_pos1 + pos2_match.pre_match + pos2_match.to_s, pos2_match.post_match]
-              end
-
-            # Return both pos1 and pos2 split points. The sorting below will choose the better one.
-            [].tap do |choices|
-              # pos1 split point; reject empty before string (to avoid truncating everything)
-              unless first_block && before_pos1.blank?
-                choices << {
-                  :before => before_pos1, :after => after_pos1, :description => split_type[:description],
-                  :cost => split_type[:cost] * (target_length - before_pos1.size + 1)
-                }
-              end
-
-              # pos2 split point
-              choices << {
-                :before => before_pos2, :after => after_pos2, :description => split_type[:description],
-                :cost => split_type[:cost] * (before_pos2.size - target_length + 1)
-              }
-            end
-          end.compact.flatten.sort{|type1, type2| type1[:cost] <=> type2[:cost] }.first
+          split_choices = SPLIT_TYPES.map do |regex, split_type|
+            try_split_type(regex, split_type, block, target_length, first_block)
+          end.compact.flatten.sort do |type1, type2|
+            type1[:cost] <=> type2[:cost]
+          end
 
           target_length = 0 # After we've done one split, never split any subsequent text block
-          yield split[:before], split[:after]
+          best_split = split_choices.first
+          yield best_split[:before], best_split[:after]
 
         end.tap { first_block = false }
       end
@@ -162,6 +130,45 @@ module BuenaVista
     end
 
     private
+
+    def try_split_type(regex, split_type, text, target_length, first_block)
+      # pos1 is a split position before the target position. Get the two strings into which
+      # we would split if we split at pos1.
+      before_pos1, after_pos1, pos1_separator, strictly_after_pos1 =
+        if split_type[:split] == :before
+          split_before_match(text, regex, target_length)
+        elsif split_type[:split] == :after
+          split_after_match(text, regex, target_length)
+        end
+
+      # pos2 is the first split position *after* the target position.
+      # Get the two strings into which we would split if we split at pos2.
+      before_pos2, after_pos2 =
+        if !(pos2_match = strictly_after_pos1.match(regex))
+          [text, '']
+        elsif split_type[:split] == :before
+          [before_pos1 + pos1_separator + pos2_match.pre_match, pos2_match.to_s + pos2_match.post_match]
+        elsif split_type[:split] == :after
+          [before_pos1 + pos2_match.pre_match + pos2_match.to_s, pos2_match.post_match]
+        end
+
+      # Return both pos1 and pos2 split points. The sorting below will choose the better one.
+      [].tap do |choices|
+        # pos1 split point; reject empty before string (to avoid truncating everything)
+        unless first_block && before_pos1.blank?
+          choices << {
+            :before => before_pos1, :after => after_pos1, :description => split_type[:description],
+            :cost => split_type[:cost] * (target_length - before_pos1.size + 1)
+          }
+        end
+
+        # pos2 split point
+        choices << {
+          :before => before_pos2, :after => after_pos2, :description => split_type[:description],
+          :cost => split_type[:cost] * (before_pos2.size - target_length + 1)
+        }
+      end
+    end
 
     # Searches for matches of `regex` within `text` and returns four strings:
     # 1. all the text before a match; 2. the matched text itself plus everything thereafter;
