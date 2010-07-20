@@ -121,9 +121,17 @@ module BuenaVista
     # Convenience method for rendering truncated text as HTML. See specs for usage.
     def display_truncated_text(text, options)
       truncate_options = {:length => options.delete(:length)}
-      block_tag = options.delete(:block_tag) || 'p'
-      more = options.delete(:more) || " \xE2\x80\xA6" # Ellipsis character in UTF-8
       any_hidden = false
+
+      options = {
+        :block_tag => "p",
+        :more => "\xE2\x80\xA6", # Ellipsis character in UTF-8
+        :truncated_text => {:class => 'truncated'}
+      }.merge(options)
+
+      if options[:truncated_text].kind_of?(Hash) && options[:truncated_text][:class]
+        truncated_attributes = " class=\"#{options[:truncated_text][:class]}\""
+      end
 
       truncate_text(text, truncate_options) do |visible, hidden|
         any_hidden ||= hidden.present?
@@ -131,19 +139,34 @@ module BuenaVista
           :visible => visible.present?,
           :html => [
             html_escape(visible),
-            (visible.blank?   && hidden.present?) ? html_escape(hidden) : nil,
-            (visible.present? && hidden.present?) ? "<span class=\"truncated\">#{html_escape(hidden)}</span>" : nil
+            (visible.present? || hidden.blank?) ? nil : html_escape(hidden),
+            (visible.blank?   || hidden.blank?) ? nil : (
+              truncated_attributes ? "<span#{truncated_attributes}>#{html_escape(hidden)}</span>" : nil
+            )
           ].compact
         }
+
       end.tap do |blocks|
-        if any_hidden
+        if any_hidden && options[:more]
           last_visible_html = blocks.select{|block| block[:visible] }.last[:html]
-          last_visible_html.insert(1, "<a href=\"#\" class=\"expand-truncated\">#{html_escape(more)}</a>")
+          if truncated_attributes
+            last_visible_html.insert(1, "<a href=\"#\" class=\"expand-truncated\">#{html_escape(options[:more])}</a>")
+          else
+            last_visible_html.insert(1, html_escape(options[:more]))
+          end
         end
+
       end.map do |block|
-        truncated_class = ' class="truncated"' if !block[:visible]
-        "<#{block_tag}#{truncated_class}>#{block[:html].join}</#{block_tag}>"
-      end.join
+        if block[:visible]
+          if options[:block_tag]
+            "<#{options[:block_tag]}>#{block[:html].join}</#{options[:block_tag]}>"
+          else
+            block[:html].join
+          end
+        elsif options[:block_tag] && truncated_attributes
+          "<#{options[:block_tag]}#{truncated_attributes}>#{block[:html].join}</#{options[:block_tag]}>"
+        end
+      end.compact.join
     end
 
     private

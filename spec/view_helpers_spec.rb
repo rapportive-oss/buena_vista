@@ -167,6 +167,10 @@ describe BuenaVista::ViewHelpers do
       display_truncated_text("hello world", :length => 100, :block_tag => 'h1').should == "<h1>hello world</h1>"
     end
 
+    it "should allow the wrapper tag to be omitted" do
+      display_truncated_text("hello world", :length => 100, :block_tag => false).should == "hello world"
+    end
+
     it "should HTML-escape input text" do
       display_truncated_text("a < b & c", :length => 100).should == "<p>a &lt; b &amp; c</p>"
     end
@@ -187,6 +191,21 @@ describe BuenaVista::ViewHelpers do
 
       it "should allow the 'more' link text to be configured" do
         display_truncated_text("hello. world.", :length => 8, :more => 'More >').should include('More &gt;')
+      end
+
+      it "should allow the 'more' link text to be omitted" do
+        result = display_truncated_text("hello. world.", :length => 8, :more => nil)
+        result.should == '<p>hello. <span class="truncated">world.</span></p>'
+      end
+
+      it "should allow the truncated text to be omitted completely" do
+        result = display_truncated_text("hello. world.", :length => 8, :truncated_text => false)
+        result.should == "<p>hello. \xE2\x80\xA6</p>"
+      end
+
+      it "should allow the truncated text's CSS class to be overridden" do
+        result = display_truncated_text("hello. world.", :length => 8, :truncated_text => {:class => 'hidden'})
+        result.should include('<span class="hidden">world.</span>')
       end
     end
 
@@ -215,6 +234,16 @@ describe BuenaVista::ViewHelpers do
 
       it "should not create a span with class=truncated" do
         @html.should_not include('<span class="truncated">')
+      end
+
+      it "should allow the truncated text to be omitted completely" do
+        result = display_truncated_text(%w(hello world), :length => 5, :truncated_text => false, :more => false)
+        result.should == '<p>hello</p>'
+      end
+
+      it "should allow the truncated text's CSS class to be overridden" do
+        result = display_truncated_text(%w(hello world), :length => 5, :truncated_text => {:class => 'hidden'})
+        result.should include('<p class="hidden">world</p>')
       end
     end
 
