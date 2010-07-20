@@ -26,13 +26,17 @@ describe BuenaVista::ViewHelpers do
         result.should == [' -- hello world -- ']
       end
 
-      describe "if the string is short" do
+      describe "if the string is shorter than the target length" do
         it "should pass the string to the block's first parameter" do
           truncation_pairs('hello world', :length => 100).should == [['hello world', '']]
         end
       end
 
-      describe "if the string is long" do
+      describe "if the string is longer than the target length" do
+        it "should cope with short target lengths" do
+          truncation_pairs("badgers must win!", :length => 10).should == [["badgers must", " win!"]]
+        end
+
         it "should split at a sentence boundary at less-than-target position, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products. Turn customers into champions.",
@@ -56,7 +60,7 @@ describe BuenaVista::ViewHelpers do
         it "should split before hyphens at less-than-target position, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products. Turn customers into champions.",
-            :length => 34
+            :length => 30
           ).should == [[
             "Customer Feedback 2.0",
             " - Harness the ideas of your customers. Build great products. Turn customers into champions."
@@ -76,7 +80,7 @@ describe BuenaVista::ViewHelpers do
         it "should split before pipe characters, if appropriate" do
           truncation_pairs(
             "Customer Feedback 2.0 | Harness the ideas of your customers | Build great products | Turn customers into champions",
-            :length => 34
+            :length => 30
           ).should == [[
             "Customer Feedback 2.0",
             " | Harness the ideas of your customers | Build great products | Turn customers into champions"
@@ -94,8 +98,8 @@ describe BuenaVista::ViewHelpers do
         end
 
         it "should split within words if unavoidable" do
-          truncation_pairs("This is so supercalifragilisticexpialidocioussupercalifragilisticexpialidocioussupercalifragilisticexpialidocioussupercalifragilisticexpialidocious", :length => 32).should == [
-            ["This is so supercalifragilistice", "xpialidocioussupercalifragilisticexpialidocioussupercalifragilisticexpialidocioussupercalifragilisticexpialidocious"]
+          truncation_pairs("This is so supercalifragilisticexpialidocioussupercalifragilisticexpialidocious", :length => 32).should == [
+            ["This is so supercalifragilistice", "xpialidocioussupercalifragilisticexpialidocious"]
           ]
         end
       end

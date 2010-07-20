@@ -23,13 +23,19 @@ module BuenaVista
     # Matches stuff which looks like the end of a sentence.
     SENTENCE_END_REGEX = /\w[\.,!\?\)\]\}>'"]+\s+/
 
-    # Mapping of different types of string split regexes to their properties.
+    # Mapping of different types of string split regexes to their properties. The cost is an additive
+    # quantity, not multiplicative (i.e. you could add a constant to all of the costs, and still get the
+    # same behaviour; the reference point of zero is chosen arbitrarily), and its unit is percentage
+    # of the target string length. The intuition is as follows: compare two split types, e.g.
+    # sentence boundary vs. word boundary. The difference in cost is 40, which means that we'd be willing
+    # to exceed or fall short of the target length by up to 40% in order to get a sentence boundary split
+    # rather than a word boundary split.
     SPLIT_TYPES = {
-      SENTENCE_START_REGEX    => {:cost => 1, :split => :before, :description => 'sentence boundary'},
-      SENTENCE_END_REGEX      => {:cost => 1, :split => :after,  :description => 'sentence boundary'},
-      DISJUNCTIVE_CHARS_REGEX => {:cost => 2, :split => :before, :description => 'disjunctive punctuation'},
-      / / => {:cost => 15,  :split => :before, :description => 'word boundary'},
-      /./ => {:cost => 100, :split => :before, :description => 'mid-word'}
+      SENTENCE_START_REGEX    => {:cost => 0,  :split => :before, :description => 'sentence boundary'},
+      SENTENCE_END_REGEX      => {:cost => 0,  :split => :after,  :description => 'sentence boundary'},
+      DISJUNCTIVE_CHARS_REGEX => {:cost => 10, :split => :before, :description => 'disjunctive punctuation'},
+      / / => {:cost => 40, :split => :before, :description => 'word boundary'},
+      /./ => {:cost => 90, :split => :before, :description => 'mid-word'}
     }
 
 
@@ -39,9 +45,13 @@ module BuenaVista
     #
     # Tries to find a human-friendly point to split the string by defining a cost function,
     # calculating the cost of different split positions and types, and choosing the one with
-    # the lowest cost. For example, a split at a sentence boundary has a much lower cost factor
-    # than a split in the middle of a word. The cost factor is multiplied by the distance from
-    # the ideal split position.
+    # the lowest cost. For example, a split at a sentence boundary has a much lower cost
+    # than a split in the middle of a word. The cost is calculated as follows:
+    #
+    #   cost = split_type[:cost] + 100 * (target_length - result_length).abs / target_length
+    #
+    # where +result_length+ is the length of the string you'd end up with if you choose that
+    # particular split type.
     #
     # Example: we want to truncate the following string to 70 characters. Naively cutting off
     # after exactly 70 chars gives:
@@ -50,30 +60,30 @@ module BuenaVista
     #
     # Wow, isn't that ugly? We want to do better. The following split points are considered:
     #
-    #   "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products."    cost = (cost factor) * (distance + 1)
-    #                         ^                                       ^    ^   ^  ^        ^--- cost = (sentence boundary cost) * 13 = 13
-    #                         |                                       |    |   |  `------------ cost = (word boundary cost)     * 4  = 32
-    #                         |                                       |    |   `--------------- cost = (mid-word split cost)    * 1  = 100
-    #                         |                                       |    `------------------- cost = (word boundary cost)     * 5  = 50
-    #                         |                                       `------------------------ cost = (sentence boundary cost) * 10 = 10
-    #                         `---------------------------------------------------------------- cost = (disjunctive char cost)  * 50 = 100
+    #   "Customer Feedback 2.0 - Harness the ideas of your customers. Build great products."    cost = (split type cost)  + distance * 100 / target_length
+    #                         ^                                       ^    ^   ^  ^        ^--- cost = (sentence boundary cost) + 13 * 100 / 70 = 18.6
+    #                         |                                       |    |   |  `------------ cost = (word boundary cost)     + 4  * 100 / 70 = 45.7
+    #                         |                                       |    |   `--------------- cost = (mid-word split cost)    + 1  * 100 / 70 = 91.4
+    #                         |                                       |    `------------------- cost = (word boundary cost)     + 5  * 100 / 70 = 47.1
+    #                         |                                       `------------------------ cost = (sentence boundary cost) + 10 * 100 / 70 = 14.3
+    #                         `---------------------------------------------------------------- cost = (disjunctive char cost)  + 50 * 100 / 70 = 81.4
     #
     # In this case, the lowest-cost split is at the sentence boundary before the word "Build".
     #
     # If a list of string blocks is passed in, the target length is applied to the concatenation
-    # of those blocks, and the boundary between two blocks has the same split cost factor as a
+    # of those blocks, and the boundary between two blocks has the same split cost as a
     # sentence boundary.
     def truncate_text(string_or_list_of_strings, options, &block)
       string_or_list_of_strings ||= []
       blocks = string_or_list_of_strings.kind_of?(Array) ? string_or_list_of_strings : [string_or_list_of_strings]
 
       options.assert_valid_keys(:length)
-      target_length = options[:length] or raise ArgumentError, "Please specify a :length option"
+      total_target_length = target_length = options[:length] or raise ArgumentError, "Please specify a :length option"
 
       first_block = true
 
-      # Observe that because the boundary between two blocks has the same cost factor as a sentence
-      # boundary, and it is lower than the cost factor of any other type of split, there can never be
+      # Observe that because the boundary between two blocks has the same cost constant as a sentence
+      # boundary, and it is lower than the cost constant of any other type of split, there can never be
       # a lower-cost split point on the other side of a block boundary. Therefore it is safe to
       # consider each block in isolation.
       blocks.map do |block|
@@ -87,7 +97,7 @@ module BuenaVista
         else
           # Try each type of split, and calculate the cost; then pick the type with the lowest cost.
           split_choices = SPLIT_TYPES.map do |regex, split_type|
-            try_split_type(regex, split_type, block, target_length, first_block)
+            try_split_type(regex, split_type, block, target_length, total_target_length, first_block)
           end.compact.flatten.sort do |type1, type2|
             type1[:cost] <=> type2[:cost]
           end
@@ -138,7 +148,7 @@ module BuenaVista
 
     private
 
-    def try_split_type(regex, split_type, text, target_length, first_block)
+    def try_split_type(regex, split_type, text, target_length, total_target_length, first_block)
       # pos1 is a split position before the target position. Get the two strings into which
       # we would split if we split at pos1.
       before_pos1, after_pos1, pos1_separator, strictly_after_pos1 =
@@ -165,14 +175,14 @@ module BuenaVista
         unless first_block && before_pos1.blank?
           choices << {
             :before => before_pos1, :after => after_pos1, :description => split_type[:description],
-            :cost => split_type[:cost] * (target_length - before_pos1.size + 1)
+            :cost => split_type[:cost] + 100 * (target_length - before_pos1.size) / total_target_length
           }
         end
 
         # pos2 split point
         choices << {
           :before => before_pos2, :after => after_pos2, :description => split_type[:description],
-          :cost => split_type[:cost] * (before_pos2.size - target_length + 1)
+          :cost => split_type[:cost] + 100 * (before_pos2.size - target_length) / total_target_length
         }
       end
     end
