@@ -144,11 +144,11 @@ module BuenaVista
       truncate_text(text, truncate_options) do |visible, hidden|
         any_hidden ||= hidden.present?
         {
-          :visible => visible.present?,
+          :visible => !visible.empty?,
           :html => [
             html_escape(visible),
-            (visible.present? || hidden.blank?) ? nil : html_escape(hidden),
-            (visible.blank?   || hidden.blank?) ? nil : (
+            (!visible.empty? || hidden.blank?) ? nil : html_escape(hidden),
+            ( visible.empty? || hidden.blank?) ? nil : (
               truncated_attributes ? "<span#{truncated_attributes}>#{html_escape(hidden)}</span>" : nil
             )
           ].compact

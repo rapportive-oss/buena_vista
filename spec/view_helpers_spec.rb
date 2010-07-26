@@ -225,6 +225,12 @@ describe BuenaVista::ViewHelpers do
         result = display_truncated_text("hello. world.", :length => 8, :truncated_text => {:class => 'hidden'})
         result.should include('<span class="hidden">world.</span>')
       end
+
+      it "should cope with strings starting with lots of whitespace" do
+        result = display_truncated_text "\n                BUSINESSCENTER",
+          :length => 8, :truncated_text => false, :block_tag => false, :whitespace => :preserve
+        result.should == "\n        \xE2\x80\xA6"
+      end
     end
 
     describe "when displaying a list of strings without truncation" do
