@@ -77,8 +77,10 @@ module BuenaVista
       string_or_list_of_strings ||= []
       blocks = string_or_list_of_strings.kind_of?(Array) ? string_or_list_of_strings : [string_or_list_of_strings]
 
-      options.assert_valid_keys(:length)
+      options.assert_valid_keys(:length, :whitespace)
       total_target_length = target_length = options[:length] or raise ArgumentError, "Please specify a :length option"
+
+      whitespace = (options[:whitespace] || :normalize).to_sym
 
       first_block = true
 
@@ -87,7 +89,13 @@ module BuenaVista
       # a lower-cost split point on the other side of a block boundary. Therefore it is safe to
       # consider each block in isolation.
       blocks.map do |block|
-        if block.size <= target_length # Below the limit
+        block = block.to_s
+        block = block.gsub(/\s+/, ' ').strip if whitespace == :normalize
+
+        if block.empty? && whitespace == :normalize # Strip out empty strings?
+          nil
+
+        elsif block.size <= target_length # Below the limit
           target_length -= block.size
           yield block, ''
 
@@ -114,13 +122,13 @@ module BuenaVista
           yield best_split[:before], best_split[:after]
 
         end.tap { first_block = false }
-      end
+      end.compact
     end
 
 
     # Convenience method for rendering truncated text as HTML. See specs for usage.
     def display_truncated_text(text, options)
-      truncate_options = {:length => options.delete(:length)}
+      truncate_options = {:length => options.delete(:length), :whitespace => options.delete(:whitespace)}
       any_hidden = false
 
       options = {

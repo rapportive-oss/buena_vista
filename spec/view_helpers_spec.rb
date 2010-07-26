@@ -26,6 +26,15 @@ describe BuenaVista::ViewHelpers do
         result.should == [' -- hello world -- ']
       end
 
+      it "should normalize whitespace by default" do
+        truncation_pairs("\r\n   hello\tworld!!\t\t\n", :length => 30).should == [['hello world!!', '']]
+      end
+
+      it "should allow whitespace normalization to be turned off" do
+        sample = "\r\n   hello\tworld!!\t\t\n"
+        truncation_pairs(sample, :length => 30, :whitespace => :preserve).should == [[sample, '']]
+      end
+
       describe "if the string is shorter than the target length" do
         it "should pass the string to the block's first parameter" do
           truncation_pairs('hello world', :length => 100).should == [['hello world', '']]
@@ -120,6 +129,15 @@ describe BuenaVista::ViewHelpers do
           visible[0...9]
         end
         result.should == ['Uservoice', 'Get Start', 'Join comp']
+      end
+
+      it "should ignore whitespace-only strings by default" do
+        truncation_pairs(["hello", "\n\t", "\tworld"], :length => 30).should == [["hello", ""], ["world", ""]]
+      end
+
+      it "should allow whitespace normalization to be turned off" do
+        result = truncation_pairs(["hello", "\n\t", "\tworld"], :length => 30, :whitespace => :preserve)
+        result.should == [["hello", ""], ["\n\t", ""], ["\tworld", ""]]
       end
 
       it "should split at the previous block boundary, if appropriate" do
